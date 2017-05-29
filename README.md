@@ -18,8 +18,36 @@ The Project
 The goals / steps of this project are the following:
 
 * Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
+```bash
+python adv_lane_detection.py calibrate --input-dir camera_cal --output camera.p
+```
+```python
+from camera_cal import CameraCalibration
+cam_cal = CameraCalibration()
+cam_cal.compute(image_list)
+cam_cal.save(camera_file)
+```
 * Apply a distortion correction to raw images.
+```bash
+python adv_lane_detection.py test_calibrate --camera-input camera.p --input-dir test_images --output-dir output_images/undist
+```
+```python
+from camera_cal import CameraCalibration
+cam_cal = CameraCalibration()
+cam_cal.load(camera_file)
+output_image = cam_cal.undistort(input_image)
+```
 * Use color transforms, gradients, etc., to create a thresholded binary image.
+```bash
+python adv_lane_detection.py binary_image --input-dir output_images/undist --output-dir output_images/binary
+```
+```python
+from binary_image import BinaryImage
+bin_img = BinaryImage(input_image, kernel=5, grad_thresh=(20, 100),
+                      color_thresh=(120, 255), mag_thresh=(30, 100),
+                      dir_thresh=(0.7, 1.3))
+output_image = bin_img.get()
+```
 * Apply a perspective transform to rectify binary image ("birds-eye view").
 * Detect lane pixels and fit to find the lane boundary.
 * Determine the curvature of the lane and vehicle position with respect to center.
