@@ -3,6 +3,7 @@ import click
 import cv2
 from camera_cal import CameraCalibration
 from binary_image import BinaryImage
+from perspective_transform import PerspectiveTransform
 
 @click.group()
 def calibrate_cli():
@@ -14,6 +15,10 @@ def test_calibrate_cli():
 
 @click.group()
 def binary_image_cli():
+    pass
+
+@click.group()
+def perspective_transform_cli():
     pass
 
 @calibrate_cli.command()
@@ -67,7 +72,23 @@ def binary_image(input_dir, output_dir):
                                   dir_thresh=(0.7, 1.3))
             cv2.imwrite(os.path.join(output_dir, filename), bin_img.get())
 
+@perspective_transform_cli.command()
+@click.option('--input-dir', help='Input directory contains images to apply binary operation.',
+              prompt='Input directory')
+@click.option('--output-dir', help='Output directory of binary images.',
+              prompt='Output directory')
+def perspective_transform(input_dir, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    filenames = os.listdir(input_dir)
+    for filename in filenames:
+        if filename.endswith('.jpg') or filename.endswith('.png'):
+            image = cv2.imread(os.path.join(input_dir, filename))
+            pers_img = PerspectiveTransform(image)
+            cv2.imwrite(os.path.join(output_dir, filename), pers_img.get())
+
 if __name__ == '__main__':
-    cli = click.CommandCollection(sources=[calibrate_cli, test_calibrate_cli, binary_image_cli])
+    cli = click.CommandCollection(sources=[calibrate_cli, test_calibrate_cli,
+                                           binary_image_cli, perspective_transform_cli])
     cli()
 
