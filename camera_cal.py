@@ -16,7 +16,7 @@ class CameraCalibration:
         imgpoints = []
         objpoints = []
 
-        objp = np.zeros((9*6, 3), np.float)
+        objp = np.zeros((9*6, 3), np.float32)
         objp[:, :2] = np.mgrid[0:9, 0:6].T.reshape(-1, 2)
         for img in img_list:
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

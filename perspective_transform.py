@@ -12,10 +12,10 @@ class PerspectiveTransform:
              [(self.img_size[0] * 5 / 6) + 60, self.img_size[1]],
              [(self.img_size[0] / 2 + 55), self.img_size[1] / 2 + 100]])
         self.dst = np.float32(
-            [[(self.img_size[0] / 4), 0],
-             [(self.img_size[0] / 4), self.img_size[1]],
-             [(self.img_size[0] * 3 / 4), self.img_size[1]],
-             [(self.img_size[0] * 3 / 4), 0]])
+            [[(self.img_size[0] / 5), 0],
+             [(self.img_size[0] / 5), self.img_size[1]],
+             [(self.img_size[0] * 4 / 5), self.img_size[1]],
+             [(self.img_size[0] * 4 / 5), 0]])
         self.M = cv2.getPerspectiveTransform(self.src, self.dst)
 
     def get(self):

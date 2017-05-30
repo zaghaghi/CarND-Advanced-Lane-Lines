@@ -4,6 +4,7 @@ import cv2
 from camera_cal import CameraCalibration
 from binary_image import BinaryImage
 from perspective_transform import PerspectiveTransform
+from lane_finder import LaneFinder
 
 @click.group()
 def calibrate_cli():
@@ -20,6 +21,11 @@ def binary_image_cli():
 @click.group()
 def perspective_transform_cli():
     pass
+
+@click.group()
+def lane_finder_cli():
+    pass
+
 
 @calibrate_cli.command()
 @click.option('--input-dir', default='data', help='Input directory of camera calibration images.',
@@ -53,7 +59,8 @@ def test_calibrate(camera_input, input_dir, output_dir):
     for filename in filenames:
         if filename.endswith('.jpg') or filename.endswith('.png'):
             image = cv2.imread(os.path.join(input_dir, filename))
-            cv2.imwrite(os.path.join(output_dir, filename), cam_cal.undistort(image))
+            cv2.imwrite(os.path.join(output_dir, os.path.splitext(filename)[0] + '.png'),
+                        cam_cal.undistort(image))
 
 @binary_image_cli.command()
 @click.option('--input-dir', help='Input directory contains images to apply binary operation.',
@@ -87,8 +94,27 @@ def perspective_transform(input_dir, output_dir):
             pers_img = PerspectiveTransform(image)
             cv2.imwrite(os.path.join(output_dir, filename), pers_img.get())
 
+@lane_finder_cli.command()
+@click.option('--input-dir', help='Input directory contains perspective gray images for finding lanes.',
+              prompt='Input directory')
+@click.option('--output-dir', help='Output directory for images.',
+              prompt='Output directory')
+def lane_finder(input_dir, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    filenames = os.listdir(input_dir)
+    for filename in filenames:
+        if filename.endswith('.jpg') or filename.endswith('.png'):
+            image = cv2.imread(os.path.join(input_dir, filename))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            lane_finder = LaneFinder(image)
+            lane_finder.slide_window()
+            cv2.imwrite(os.path.join(output_dir, filename), lane_finder.visualize())
+
+
 if __name__ == '__main__':
     cli = click.CommandCollection(sources=[calibrate_cli, test_calibrate_cli,
-                                           binary_image_cli, perspective_transform_cli])
+                                           binary_image_cli, perspective_transform_cli,
+                                           lane_finder_cli])
     cli()
 

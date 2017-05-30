@@ -7,6 +7,7 @@ class BinaryImage:
     def __init__(self, image, kernel=3, grad_thresh=(0, 255),
                  color_thresh=(0, 255), mag_thresh=(0, 255),
                  dir_thresh=(0, np.pi/2)):
+        image = cv2.bilateralFilter(image, kernel*2, 60, 60)
         self.image = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
         self.s_channel = self.image[:, :, 2]
         self.gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
