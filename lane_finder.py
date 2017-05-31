@@ -75,11 +75,13 @@ class LaneFinder:
         self.left_fit = np.polyfit(left_y, left_x, 2)
         self.right_fit = np.polyfit(right_y, right_x, 2)
 
-    def visualize(self):
+    def visualize(self, draw_on_image=True, draw_lane_pixels=True, draw_lane=True):
         ''' visualize founded lanes and windows on image '''
         if self.left_fit is None or self.right_fit is None:
             return None
         vis_img = np.dstack((self.image, self.image, self.image))
+        if not draw_on_image:
+            vis_img = np.zeros_like(vis_img)
         ploty = np.linspace(0, self.image.shape[0] - 1, self.image.shape[0])
         left_fitx = self.left_fit[0] * ploty ** 2 + self.left_fit[1] * ploty + self.left_fit[2]
         right_fitx = self.right_fit[0] * ploty ** 2 + self.right_fit[1] * ploty + self.right_fit[2]
@@ -91,9 +93,12 @@ class LaneFinder:
         pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
         pts = np.hstack((pts_left, pts_right))
 
-        cv2.fillPoly(vis_img, np.int_([pts]), (0, 255, 0))
+        if draw_lane:
+            cv2.fillPoly(vis_img, np.int_([pts]), (0, 255, 0))
 
-        vis_img[nonzero_y[self.left_lane_inds], nonzero_x[self.left_lane_inds]] = [255, 0, 0]
-        vis_img[nonzero_y[self.right_lane_inds], nonzero_x[self.right_lane_inds]] = [0, 0, 255]
+        if draw_lane_pixels:
+            vis_img[nonzero_y[self.left_lane_inds], nonzero_x[self.left_lane_inds]] = [255, 0, 0]
+            vis_img[nonzero_y[self.right_lane_inds], nonzero_x[self.right_lane_inds]] = [0, 0, 255]
 
         return vis_img
+

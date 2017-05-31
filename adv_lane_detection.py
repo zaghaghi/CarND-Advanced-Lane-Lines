@@ -26,6 +26,9 @@ def perspective_transform_cli():
 def lane_finder_cli():
     pass
 
+@click.group()
+def lane_visualizer_cli():
+    pass
 
 @calibrate_cli.command()
 @click.option('--input-dir', default='data', help='Input directory of camera calibration images.',
@@ -107,14 +110,39 @@ def lane_finder(input_dir, output_dir):
         if filename.endswith('.jpg') or filename.endswith('.png'):
             image = cv2.imread(os.path.join(input_dir, filename))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            lane_finder = LaneFinder(image)
-            lane_finder.slide_window()
-            cv2.imwrite(os.path.join(output_dir, filename), lane_finder.visualize())
+            finder = LaneFinder(image)
+            finder.slide_window()
+            cv2.imwrite(os.path.join(output_dir, filename), finder.visualize())
+
+
+@lane_visualizer_cli.command()
+@click.option('--input-dir', help='Input directory contains perspective gray images for finding lanes.',
+              prompt='Input directory')
+@click.option('--original-dir', help='Input directory contains undistorted images for finding lanes.',
+              prompt='Input directory')
+@click.option('--output-dir', help='Output directory for images.',
+              prompt='Output directory')
+def lane_visualizer(input_dir, original_dir, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    filenames = os.listdir(input_dir)
+    for filename in filenames:
+        if filename.endswith('.jpg') or filename.endswith('.png'):
+            image = cv2.imread(os.path.join(input_dir, filename))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            finder = LaneFinder(image)
+            finder.slide_window()
+            overlay = finder.visualize(draw_lane_pixels=False, draw_on_image=False)
+            undist = cv2.imread(os.path.join(original_dir, filename))
+            pers_img = PerspectiveTransform(overlay)
+            inverse_pers_img = pers_img.get_inverse()
+            undist_overlay = cv2.addWeighted(undist, 1, inverse_pers_img, 0.3, 0)
+            cv2.imwrite(os.path.join(output_dir, filename), undist_overlay)
 
 
 if __name__ == '__main__':
     cli = click.CommandCollection(sources=[calibrate_cli, test_calibrate_cli,
                                            binary_image_cli, perspective_transform_cli,
-                                           lane_finder_cli])
+                                           lane_finder_cli, lane_visualizer_cli])
     cli()
 

@@ -3,3 +3,4 @@ python adv_lane_detection.py test_calibrate --camera-input camera.p --input-dir 
 python adv_lane_detection.py binary_image --input-dir output_images\undist --output-dir output_images\binary
 python adv_lane_detection.py perspective_transform --input-dir output_images\binary --output-dir output_images\perspective
 python adv_lane_detection.py lane_finder --input-dir output_images\perspective --output-dir output_images\lanes
+python adv_lane_detection.py lane_visualizer --input-dir output_images\perspective --original-dir output_images\undist --output-dir output_images\final
