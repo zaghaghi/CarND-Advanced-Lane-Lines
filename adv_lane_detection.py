@@ -1,36 +1,11 @@
 import os
 import click
 import cv2
-from camera_cal import CameraCalibration
-from binary_image import BinaryImage
-from perspective_transform import PerspectiveTransform
-from lane_finder import LaneFinder
+from utils import *
 
-@click.group()
-def calibrate_cli():
-    pass
+general_cli = click.Group()
 
-@click.group()
-def test_calibrate_cli():
-    pass
-
-@click.group()
-def binary_image_cli():
-    pass
-
-@click.group()
-def perspective_transform_cli():
-    pass
-
-@click.group()
-def lane_finder_cli():
-    pass
-
-@click.group()
-def lane_visualizer_cli():
-    pass
-
-@calibrate_cli.command()
+@general_cli.command()
 @click.option('--input-dir', default='data', help='Input directory of camera calibration images.',
               prompt='Input directory')
 @click.option('--output', default='camera.p', help='Camera parameters output filename.')
@@ -46,7 +21,7 @@ def calibrate(input_dir, output):
     cam_cal.save(output)
 
 
-@test_calibrate_cli.command()
+@general_cli.command('test-calibrate')
 @click.option('--camera-input', default='camera.p', help='Input camera parameters filename.',
               prompt='Input camera filename')
 @click.option('--input-dir', help='Input directory contains images to apply undistort operation.',
@@ -65,7 +40,7 @@ def test_calibrate(camera_input, input_dir, output_dir):
             cv2.imwrite(os.path.join(output_dir, os.path.splitext(filename)[0] + '.png'),
                         cam_cal.undistort(image))
 
-@binary_image_cli.command()
+@general_cli.command('binary-image')
 @click.option('--input-dir', help='Input directory contains images to apply binary operation.',
               prompt='Input directory')
 @click.option('--output-dir', help='Output directory of binary images.',
@@ -82,7 +57,7 @@ def binary_image(input_dir, output_dir):
                                   dir_thresh=(0.7, 1.3))
             cv2.imwrite(os.path.join(output_dir, filename), bin_img.get())
 
-@perspective_transform_cli.command()
+@general_cli.command('perspective-transform')
 @click.option('--input-dir', help='Input directory contains images to apply binary operation.',
               prompt='Input directory')
 @click.option('--output-dir', help='Output directory of binary images.',
@@ -97,7 +72,7 @@ def perspective_transform(input_dir, output_dir):
             pers_img = PerspectiveTransform(image)
             cv2.imwrite(os.path.join(output_dir, filename), pers_img.get())
 
-@lane_finder_cli.command()
+@general_cli.command('lane-finder')
 @click.option('--input-dir', help='Input directory contains perspective gray images for finding lanes.',
               prompt='Input directory')
 @click.option('--output-dir', help='Output directory for images.',
@@ -115,11 +90,11 @@ def lane_finder(input_dir, output_dir):
             cv2.imwrite(os.path.join(output_dir, filename), finder.visualize())
 
 
-@lane_visualizer_cli.command()
+@general_cli.command('lane-visualizer')
 @click.option('--input-dir', help='Input directory contains perspective gray images for finding lanes.',
               prompt='Input directory')
 @click.option('--original-dir', help='Input directory contains undistorted images for finding lanes.',
-              prompt='Input directory')
+              prompt='Original directory')
 @click.option('--output-dir', help='Output directory for images.',
               prompt='Output directory')
 def lane_visualizer(input_dir, original_dir, output_dir):
@@ -137,12 +112,18 @@ def lane_visualizer(input_dir, original_dir, output_dir):
             pers_img = PerspectiveTransform(overlay)
             inverse_pers_img = pers_img.get_inverse()
             undist_overlay = cv2.addWeighted(undist, 1, inverse_pers_img, 0.3, 0)
+            undist_overlay = finder.draw_info(undist_overlay)
             cv2.imwrite(os.path.join(output_dir, filename), undist_overlay)
 
+@general_cli.command('process-video')
+@click.option('--input-file', help='Input video file.',
+              prompt='Input video')
+@click.option('--output-file', help='Output video file.',
+              prompt='Output video')
+def process_video(input_file, output_file):
+    VideoProcessor.init(input_file, output_file, 'camera_cal')
+    VideoProcessor.process()
 
 if __name__ == '__main__':
-    cli = click.CommandCollection(sources=[calibrate_cli, test_calibrate_cli,
-                                           binary_image_cli, perspective_transform_cli,
-                                           lane_finder_cli, lane_visualizer_cli])
-    cli()
+    general_cli()
 
