@@ -18,6 +18,12 @@ class LaneFinder:
         self.right_fit = None
         self.left_lane_inds = None
         self.right_lane_inds = None
+        self.left_curverad = None
+        self.right_curverad = None
+        self.ym_per_pix = 30/720 # meters per pixel in y dimension
+        self.xm_per_pix = 3.7/700 # meters per pixel in x dimension
+        self.distance_from_center = self.left_lane_start - \
+                                    (self.image.shape[1] - self.right_lane_start)
 
     def slide_window(self, n_windows=9, window_width=100, min_pixel=50):
         ''' Slides a window on both lanes to find a polynomial fit '''
@@ -75,6 +81,20 @@ class LaneFinder:
         self.left_fit = np.polyfit(left_y, left_x, 2)
         self.right_fit = np.polyfit(right_y, right_x, 2)
 
+        y_eval = self.image.shape[0] * self.ym_per_pix
+        # Fit new polynomials to x,y in world space
+        left_fit_cr = np.polyfit(left_y * self.ym_per_pix, left_x * self.xm_per_pix, 2)
+        right_fit_cr = np.polyfit(right_y * self.ym_per_pix, right_x * self.xm_per_pix, 2)
+        # Calculate the new radii of curvature
+        left_1st_derivative = 2 * left_fit_cr[0] * y_eval + left_fit_cr[1]
+        left_2nd_derivative = 2 * left_fit_cr[0]
+        right_1st_derivative = 2 * right_fit_cr[0] * y_eval + right_fit_cr[1]
+        right_2nd_derivative = 2 * right_fit_cr[0]
+        self.left_curverad = (((1 + (left_1st_derivative) ** 2) ** 1.5) /
+                              np.absolute(left_2nd_derivative))
+        self.right_curverad = (((1 + (right_1st_derivative) ** 2) ** 1.5) /
+                               np.absolute(right_2nd_derivative))
+
     def visualize(self, draw_on_image=True, draw_lane_pixels=True, draw_lane=True):
         ''' visualize founded lanes and windows on image '''
         if self.left_fit is None or self.right_fit is None:
@@ -102,3 +122,21 @@ class LaneFinder:
 
         return vis_img
 
+    def draw_info(self, image):
+        ''' draw curve information on input image'''
+        text = "Left Curve: {:6.2f}m".format(self.left_curverad)
+        cv2.putText(image, text, (20, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        text = "Right Curve: {:6.2f}m".format(self.right_curverad)
+        cv2.putText(image, text, (20, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        text = "Distance from center {:4.2f}m to the {}"
+        if self.distance_from_center < 0:
+            text = text.format(-self.distance_from_center * self.xm_per_pix, 'left')
+        elif self.distance_from_center == 0:
+            text = "Distance from center 0m"
+        else:
+            text = text.format(self.distance_from_center * self.xm_per_pix, 'right')
+        cv2.putText(image, text, (20, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        return image
