@@ -29,7 +29,7 @@ class VideoProcessor:
         pers_img = PerspectiveTransform(image_binary)
         image_perspective = pers_img.get()
         #image_perspective = cv2.cvtColor(image_perspective, cv2.COLOR_BGR2GRAY)
-        finder = LaneFinder(image_perspective)
+        finder = LaneFinder(image_perspective, cache=True)
         finder.slide_window()
         image_perspective_overlay = finder.visualize(draw_lane_pixels=False, draw_on_image=False)
         pers_img = PerspectiveTransform(image_perspective_overlay)

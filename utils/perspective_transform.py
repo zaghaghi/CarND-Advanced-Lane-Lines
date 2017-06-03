@@ -7,10 +7,10 @@ class PerspectiveTransform:
         self.image = image
         self.img_size = (image.shape[1], image.shape[0])
         self.src = np.float32(
-            [[(self.img_size[0] / 2) - 55, self.img_size[1] / 2 + 100],
+            [[(self.img_size[0] / 2) - 55, self.img_size[1] / 2 + 90],
              [((self.img_size[0] / 6) - 10), self.img_size[1]],
              [(self.img_size[0] * 5 / 6) + 60, self.img_size[1]],
-             [(self.img_size[0] / 2 + 55), self.img_size[1] / 2 + 100]])
+             [(self.img_size[0] / 2 + 55), self.img_size[1] / 2 + 90]])
         self.dst = np.float32(
             [[(self.img_size[0] / 5), 0],
              [(self.img_size[0] / 5), self.img_size[1]],
