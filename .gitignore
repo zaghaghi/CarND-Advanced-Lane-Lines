@@ -1,3 +1,4 @@
 .vscode/
 __pycache__/
 camera.p
+debug_images*/

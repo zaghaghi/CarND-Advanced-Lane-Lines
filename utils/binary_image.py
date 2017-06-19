@@ -1,23 +1,24 @@
-import click
 import cv2
 import numpy as np
 
 class BinaryImage:
     ''' build a binary image from input image which is best for lane detecction'''
-    def __init__(self, image, kernel=3, grad_thresh=(0, 255),
-                 color_thresh=(0, 255), mag_thresh=(0, 255),
-                 dir_thresh=(0, np.pi/2)):
+    def __init__(self, image, kernel=5, grad_thresh=(0, 255),
+                 sat_thresh=(0, 255), light_thresh=(0, 255),
+                 mag_thresh=(0, 255), dir_thresh=(0, np.pi/2)):
         image = cv2.bilateralFilter(image, kernel*2, 60, 120)
         self.image = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
         self.s_channel = self.image[:, :, 2]
-        self.gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        self.l_channel = self.image[:, :, 1]
+        self.gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+
         self.abs_sobelx = None
         self.abs_sobely = None
         self.scaled_sobelx = None
         self.scaled_sobely = None
         self._compute_sobel(kernel)
         self.grad_binary = self._abs_sobel_thresh(grad_thresh)
-        self.color_binary = self._color_thresh(color_thresh)
+        self.color_binary = self._color_thresh(sat_thresh, light_thresh)
         self.mag_binary = self._mag_thresh(mag_thresh)
         self.dir_binary = self._dir_thresh(dir_thresh)
 
@@ -29,9 +30,10 @@ class BinaryImage:
         self.abs_sobely = np.absolute(sobely)
         self.scaled_sobely = np.uint8(255*self.abs_sobely/np.max(self.abs_sobely))
 
-    def _color_thresh(self, thresh):
+    def _color_thresh(self, sat_thresh, light_thresh):
         color_binary = np.zeros_like(self.s_channel)
-        color_binary[(self.s_channel >= thresh[0]) & (self.s_channel <= thresh[1])] = 1
+        color_binary[(self.s_channel >= sat_thresh[0]) & (self.s_channel <= sat_thresh[1]) &
+                     (self.l_channel >= light_thresh[0]) & (self.l_channel <= light_thresh[1])] = 1
         return color_binary
 
     def _abs_sobel_thresh(self, thresh):

@@ -4,7 +4,7 @@ import cv2
 
 class Line:
     ''' keep track of detected lines '''
-    average_count = 5
+    average_count = 8
     def __init__(self):
         self.poly_fit = []
         self.lane_ind = []
@@ -37,6 +37,12 @@ class Line:
     def get_last_lane_start(self):
         return self.lane_start[-1]
 
+    def get_lane_start(self):
+        return self.lane_start[-1]
+        # if len(self.lane_start) == 1:
+        #    return self.lane_start[0]
+        # return (self.lane_start[-1] + self.lane_start[-2]) / 2.0
+
     def get_average_lane_start(self):
         return np.average(self.lane_start, axis=0)
 
@@ -58,8 +64,6 @@ class LaneFinder:
         image_midpoint = self.histogram.shape[0]//2
         self.left_lane_start = np.argmax(self.histogram[:image_midpoint])
         self.right_lane_start = np.argmax(self.histogram[image_midpoint:]) + image_midpoint
-        self.left_windows = []
-        self.right_windows = []
         self.left_fit = None
         self.right_fit = None
         self.left_lane_inds = None
@@ -71,7 +75,7 @@ class LaneFinder:
         self.distance_from_center = self.left_lane_start - \
                                     (self.image.shape[1] - self.right_lane_start)
 
-    def slide_window(self, n_windows=9, window_width=120, min_pixel=50):
+    def slide_window(self, n_windows=9, window_width=120, min_pixel=80):
         ''' Slides a window on both lanes to find a polynomial fit '''
         window_height = np.int(self.image.shape[0]/n_windows)
 
@@ -79,16 +83,14 @@ class LaneFinder:
         nonzero_y = np.array(nonzero[0])
         nonzero_x = np.array(nonzero[1])
 
-        left_current = self.left_lane_start
-        right_current = self.right_lane_start
+        LaneFinder.left_line.add_lane_start(self.left_lane_start)
+        LaneFinder.right_line.add_lane_start(self.right_lane_start)
 
-        LaneFinder.left_line.add_lane_start(left_current)
-        LaneFinder.right_line.add_lane_start(right_current)
+        left_current = LaneFinder.left_line.get_lane_start()
+        right_current = LaneFinder.right_line.get_lane_start()
 
         left_lane_inds = []
         right_lane_inds = []
-        self.left_windows = []
-        self.right_windows = []
         for window in range(n_windows):
             # Identify window boundaries in x and y (and right and left)
             win_y_low = self.image.shape[0] - (window + 1) * window_height
@@ -97,9 +99,6 @@ class LaneFinder:
             win_xleft_high = left_current + window_width
             win_xright_low = right_current - window_width
             win_xright_high = right_current + window_width
-            # Append windows to list for further visualization
-            self.left_windows.append([win_xleft_low, win_y_low, win_xleft_high, win_y_high])
-            self.right_windows.append([win_xright_low, win_y_low, win_xright_high, win_y_high])
             # Identify the nonzero pixels in x and y within the window
             good_left_inds = ((nonzero_y >= win_y_low) & (nonzero_y < win_y_high) &
                               (nonzero_x >= win_xleft_low) & (nonzero_x < win_xleft_high)
@@ -130,25 +129,37 @@ class LaneFinder:
         right_y = nonzero_y[self.right_lane_inds]
 
         # Fit a second order polynomial to each
-        self.left_fit = np.polyfit(left_y, left_x, 2)
-        self.right_fit = np.polyfit(right_y, right_x, 2)
+        if len(left_x) > 0 and len(left_y) > 0:
+            self.left_fit = np.polyfit(left_y, left_x, 2)
+        else:
+            self.left_fit = LaneFinder.left_line.get_last_poly_fit()
+        if len(right_x) > 0 and len(right_y) > 0:
+            self.right_fit = np.polyfit(right_y, right_x, 2)
+        else:
+            self.right_fit = LaneFinder.right_line.get_last_poly_fit()
 
         LaneFinder.left_line.add_poly_fit(self.left_fit)
         LaneFinder.right_line.add_poly_fit(self.right_fit)
 
         y_eval = self.image.shape[0] * self.ym_per_pix
-        # Fit new polynomials to x,y in world space
-        left_fit_cr = np.polyfit(left_y * self.ym_per_pix, left_x * self.xm_per_pix, 2)
-        right_fit_cr = np.polyfit(right_y * self.ym_per_pix, right_x * self.xm_per_pix, 2)
-        # Calculate the new radii of curvature
-        left_1st_derivative = 2 * left_fit_cr[0] * y_eval + left_fit_cr[1]
-        left_2nd_derivative = 2 * left_fit_cr[0]
-        right_1st_derivative = 2 * right_fit_cr[0] * y_eval + right_fit_cr[1]
-        right_2nd_derivative = 2 * right_fit_cr[0]
-        self.left_curverad = (((1 + (left_1st_derivative) ** 2) ** 1.5) /
-                              np.absolute(left_2nd_derivative))
-        self.right_curverad = (((1 + (right_1st_derivative) ** 2) ** 1.5) /
-                               np.absolute(right_2nd_derivative))
+        if len(left_x) > 0 and len(left_y) > 0:
+            # Fit new polynomials to x,y in world space
+            left_fit_cr = np.polyfit(left_y * self.ym_per_pix, left_x * self.xm_per_pix, 2)
+            left_1st_derivative = 2 * left_fit_cr[0] * y_eval + left_fit_cr[1]
+            left_2nd_derivative = 2 * left_fit_cr[0]
+            self.left_curverad = (((1 + (left_1st_derivative) ** 2) ** 1.5) /
+                                  np.absolute(left_2nd_derivative))
+        else:
+            self.left_curverad = 0
+
+        if len(right_x) > 0 and len(right_y) > 0:
+            right_fit_cr = np.polyfit(right_y * self.ym_per_pix, right_x * self.xm_per_pix, 2)
+            right_1st_derivative = 2 * right_fit_cr[0] * y_eval + right_fit_cr[1]
+            right_2nd_derivative = 2 * right_fit_cr[0]
+            self.right_curverad = (((1 + (right_1st_derivative) ** 2) ** 1.5) /
+                                   np.absolute(right_2nd_derivative))
+        else:
+            self.right_curverad = 0
 
     def visualize(self, draw_on_image=True, draw_lane_pixels=True, draw_lane=True):
         ''' visualize founded lanes and windows on image '''

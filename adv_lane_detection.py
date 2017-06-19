@@ -53,8 +53,8 @@ def binary_image(input_dir, output_dir):
         if filename.endswith('.jpg') or filename.endswith('.png'):
             image = cv2.imread(os.path.join(input_dir, filename))
             bin_img = BinaryImage(image, kernel=5, grad_thresh=(20, 100),
-                                  color_thresh=(120, 255), mag_thresh=(30, 100),
-                                  dir_thresh=(0.7, 1.3))
+                                  sat_thresh=(120, 255), light_thresh=(45, 255),
+                                  mag_thresh=(30, 100), dir_thresh=(0.7, 1.3))
             cv2.imwrite(os.path.join(output_dir, filename), bin_img.get())
 
 @general_cli.command('perspective-transform')
@@ -120,8 +120,10 @@ def lane_visualizer(input_dir, original_dir, output_dir):
               prompt='Input video')
 @click.option('--output-file', help='Output video file.',
               prompt='Output video')
-def process_video(input_file, output_file):
-    VideoProcessor.init(input_file, output_file, 'camera_cal')
+@click.option('--debug', default=False)
+def process_video(input_file, output_file, debug):
+    debug_dir = 'debug_images' if debug else None
+    VideoProcessor.init(input_file, output_file, 'camera_cal', debug_dir)
     VideoProcessor.process()
 
 if __name__ == '__main__':
