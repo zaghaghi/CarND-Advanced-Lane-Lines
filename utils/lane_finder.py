@@ -4,11 +4,14 @@ import cv2
 
 class Line:
     ''' keep track of detected lines '''
-    average_count = 8
+    average_count = 5
     def __init__(self):
         self.poly_fit = []
         self.lane_ind = []
         self.lane_start = []
+        self.lane_x = []
+        self.lane_y = []
+        self.curve = []
 
     def add_poly_fit(self, poly_fit):
         self.poly_fit.append(poly_fit)
@@ -29,6 +32,26 @@ class Line:
     def get_last_lane_ind(self):
         return self.lane_ind[-1]
 
+    def add_lane_points(self, x, y):
+        if x is not None and y is not None:
+            self.lane_x.append(x)
+            self.lane_y.append(y)
+        else:
+            self.lane_x.append([])
+            self.lane_y.append([])
+
+    def get_lane_points_poly_fit(self, ym_per_pix=1, xm_per_pix=1):
+        if Line.average_count == 1 or len(self.lane_x) < 3 or len(self.lane_y) < 3:
+            return np.polyfit(self.lane_y[-1] * ym_per_pix, self.lane_x[-1] * xm_per_pix, 2)    
+        else:
+            lane_y = np.concatenate((np.repeat(self.lane_y[-1], 4),
+                                     np.repeat(self.lane_y[-2], 2),
+                                     self.lane_y[-3]))
+            lane_x = np.concatenate((np.repeat(self.lane_x[-1], 4),
+                                     np.repeat(self.lane_x[-2], 2),
+                                     self.lane_x[-3]))
+            return np.polyfit(lane_y * ym_per_pix, lane_x * xm_per_pix, 2)    
+
     def add_lane_start(self, lane_start):
         self.lane_start.append(lane_start)
         if len(self.lane_start) > Line.average_count:
@@ -45,6 +68,17 @@ class Line:
 
     def get_average_lane_start(self):
         return np.average(self.lane_start, axis=0)
+
+    def add_curve(self, cr):
+        self.curve.append(cr)
+        if (len(self.curve)) > Line.average_count:
+            del self.curve[0]
+    
+    def get_average_curve(self):
+        return np.average(self.curve, axis=0)
+
+    def get_last_curve(self):
+        return self.curve[-1]
 
 class LaneFinder:
     ''' Finds lanes from perspective image '''
@@ -74,8 +108,10 @@ class LaneFinder:
         self.xm_per_pix = 3.7/700 # meters per pixel in x dimension
         self.distance_from_center = self.left_lane_start - \
                                     (self.image.shape[1] - self.right_lane_start)
+        self.left_windows = []
+        self.right_windows = []
 
-    def slide_window(self, n_windows=9, window_width=120, min_pixel=80):
+    def slide_window(self, n_windows=9, window_width=100, min_pixel=50):
         ''' Slides a window on both lanes to find a polynomial fit '''
         window_height = np.int(self.image.shape[0]/n_windows)
 
@@ -111,9 +147,13 @@ class LaneFinder:
             right_lane_inds.append(good_right_inds)
             # If you found > minpix pixels, recenter next window on their mean position
             if len(good_left_inds) > min_pixel:
-                left_current = np.int(np.mean(nonzero_x[good_left_inds]))
+                left_current_ = np.mean(nonzero_x[good_left_inds])
+                left_current = np.int(np.average((left_current, left_current_), weights=(0.4, 0.6)))
             if len(good_right_inds) > min_pixel:
-                right_current = np.int(np.mean(nonzero_x[good_right_inds]))
+                right_current_ = np.mean(nonzero_x[good_right_inds])
+                right_current = np.int(np.average((right_current, right_current_), weights=(0.4, 0.6)))
+            self.left_windows.append([(win_xleft_low, win_y_low), (win_xleft_high, win_y_high), len(good_left_inds)])
+            self.right_windows.append([(win_xright_low, win_y_low), (win_xright_high, win_y_high), len(good_right_inds)])
 
         # Concatenate the arrays of indices
         self.left_lane_inds = np.concatenate(left_lane_inds)
@@ -128,13 +168,16 @@ class LaneFinder:
         right_x = nonzero_x[self.right_lane_inds]
         right_y = nonzero_y[self.right_lane_inds]
 
-        # Fit a second order polynomial to each
+        LaneFinder.left_line.add_lane_points(left_x, left_y)
+        LaneFinder.right_line.add_lane_points(right_x, right_y)
+
+        # Fit a second order polynomial to each lane
         if len(left_x) > 0 and len(left_y) > 0:
-            self.left_fit = np.polyfit(left_y, left_x, 2)
+            self.left_fit = LaneFinder.left_line.get_lane_points_poly_fit()
         else:
             self.left_fit = LaneFinder.left_line.get_last_poly_fit()
         if len(right_x) > 0 and len(right_y) > 0:
-            self.right_fit = np.polyfit(right_y, right_x, 2)
+            self.right_fit = LaneFinder.right_line.get_lane_points_poly_fit()
         else:
             self.right_fit = LaneFinder.right_line.get_last_poly_fit()
 
@@ -144,24 +187,27 @@ class LaneFinder:
         y_eval = self.image.shape[0] * self.ym_per_pix
         if len(left_x) > 0 and len(left_y) > 0:
             # Fit new polynomials to x,y in world space
-            left_fit_cr = np.polyfit(left_y * self.ym_per_pix, left_x * self.xm_per_pix, 2)
+            left_fit_cr = LaneFinder.left_line.get_lane_points_poly_fit(self.ym_per_pix, self.xm_per_pix)
+            #np.polyfit(left_y * self.ym_per_pix, left_x * self.xm_per_pix, 2)
             left_1st_derivative = 2 * left_fit_cr[0] * y_eval + left_fit_cr[1]
             left_2nd_derivative = 2 * left_fit_cr[0]
             self.left_curverad = (((1 + (left_1st_derivative) ** 2) ** 1.5) /
                                   np.absolute(left_2nd_derivative))
         else:
             self.left_curverad = 0
+        LaneFinder.left_line.add_curve(self.left_curverad)
 
         if len(right_x) > 0 and len(right_y) > 0:
-            right_fit_cr = np.polyfit(right_y * self.ym_per_pix, right_x * self.xm_per_pix, 2)
+            right_fit_cr = LaneFinder.right_line.get_lane_points_poly_fit(self.ym_per_pix, self.xm_per_pix)
             right_1st_derivative = 2 * right_fit_cr[0] * y_eval + right_fit_cr[1]
             right_2nd_derivative = 2 * right_fit_cr[0]
             self.right_curverad = (((1 + (right_1st_derivative) ** 2) ** 1.5) /
                                    np.absolute(right_2nd_derivative))
         else:
             self.right_curverad = 0
+        LaneFinder.right_line.add_curve(self.right_curverad)
 
-    def visualize(self, draw_on_image=True, draw_lane_pixels=True, draw_lane=True):
+    def visualize(self, draw_on_image=True, draw_lane_pixels=True, draw_lane=True, draw_windows=True):
         ''' visualize founded lanes and windows on image '''
         #if self.left_fit is None or self.right_fit is None:
         #    return None
@@ -193,14 +239,23 @@ class LaneFinder:
             vis_img[nonzero_y[left_lane_inds], nonzero_x[left_lane_inds]] = [255, 0, 0]
             vis_img[nonzero_y[right_lane_inds], nonzero_x[right_lane_inds]] = [0, 0, 255]
 
+        if draw_windows:
+            for win in self.left_windows:
+                cv2.rectangle(vis_img, win[0], win[1], (255, 0, 0), 2)
+                cv2.putText(vis_img, str(win[2]), (win[0][0] + 10, win[1][1] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 1)
+            for win in self.right_windows:
+                cv2.rectangle(vis_img, win[0], win[1], (255, 0, 0), 2)
+                cv2.putText(vis_img, str(win[2]), (win[0][0] + 10, win[1][1] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 1)
         return vis_img
 
     def draw_info(self, image):
         ''' draw curve information on input image'''
-        text = "Left Curve: {:6.2f}m".format(self.left_curverad)
+        text = "Left Curve: {:6.2f}m".format(LaneFinder.left_line.get_average_curve())
         cv2.putText(image, text, (20, 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        text = "Right Curve: {:6.2f}m".format(self.right_curverad)
+        text = "Right Curve: {:6.2f}m".format(LaneFinder.right_line.get_average_curve())
         cv2.putText(image, text, (20, 100),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         text = "Distance from center {:4.2f}m to the {}"

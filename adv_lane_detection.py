@@ -21,14 +21,14 @@ def calibrate(input_dir, output):
     cam_cal.save(output)
 
 
-@general_cli.command('test-calibrate')
+@general_cli.command('undistort')
 @click.option('--camera-input', default='camera.p', help='Input camera parameters filename.',
               prompt='Input camera filename')
 @click.option('--input-dir', help='Input directory contains images to apply undistort operation.',
               prompt='Input directory')
 @click.option('--output-dir', help='Output directory of undistorted images.',
               prompt='Output directory')
-def test_calibrate(camera_input, input_dir, output_dir):
+def undistort(camera_input, input_dir, output_dir):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     cam_cal = CameraCalibration()
@@ -39,6 +39,19 @@ def test_calibrate(camera_input, input_dir, output_dir):
             image = cv2.imread(os.path.join(input_dir, filename))
             cv2.imwrite(os.path.join(output_dir, os.path.splitext(filename)[0] + '.png'),
                         cam_cal.undistort(image))
+
+@general_cli.command('test-undistort')
+@click.option('--camera-input', default='camera.p', help='Input camera parameters filename.',
+              prompt='Input camera filename')
+@click.option('--input-file', help='Input directory contains images to apply undistort operation.',
+              prompt='Input directory')
+@click.option('--output-file', help='Output directory of undistorted images.',
+              prompt='Output directory')
+def test_undistort(camera_input, input_file, output_file):
+    cam_cal = CameraCalibration()
+    cam_cal.load(camera_input)
+    image = cv2.imread(input_file)
+    cv2.imwrite(output_file, cam_cal.visualize(image))
 
 @general_cli.command('binary-image')
 @click.option('--input-dir', help='Input directory contains images to apply binary operation.',
@@ -58,7 +71,7 @@ def binary_image(input_dir, output_dir):
             cv2.imwrite(os.path.join(output_dir, filename), bin_img.get())
 
 @general_cli.command('perspective-transform')
-@click.option('--input-dir', help='Input directory contains images to apply binary operation.',
+@click.option('--input-dir', help='Input directory contains images to apply perspective transform.',
               prompt='Input directory')
 @click.option('--output-dir', help='Output directory of binary images.',
               prompt='Output directory')
@@ -71,6 +84,16 @@ def perspective_transform(input_dir, output_dir):
             image = cv2.imread(os.path.join(input_dir, filename))
             pers_img = PerspectiveTransform(image)
             cv2.imwrite(os.path.join(output_dir, filename), pers_img.get())
+
+@general_cli.command('test-perspective-transform')
+@click.option('--input-file', help='Input image file.',
+              prompt='Input directory')
+@click.option('--output-file', help='Output image file.',
+              prompt='Output directory')
+def test_perspective_transform(input_file, output_file):
+    image = cv2.imread(input_file)
+    pers_img = PerspectiveTransform(image)
+    cv2.imwrite(output_file, pers_img.visualize())
 
 @general_cli.command('lane-finder')
 @click.option('--input-dir', help='Input directory contains perspective gray images for finding lanes.',

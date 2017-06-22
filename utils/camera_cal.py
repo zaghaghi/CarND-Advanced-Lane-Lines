@@ -46,3 +46,15 @@ class CameraCalibration:
             return None
         return cv2.undistort(image, self.mtx, self.dist, None, self.mtx)
 
+    def visualize(self, image):
+        ''' visualize undistortion effect '''
+        undist = self.undistort(image)
+        cv2.putText(image, "Original Image", (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        cv2.putText(undist, "Undistorted Image", (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        image = cv2.copyMakeBorder(image, 10, 10, 10, 10,
+                                   cv2.BORDER_CONSTANT, value=(255, 255, 255))
+        undist = cv2.copyMakeBorder(undist, 10, 10, 10, 10,
+                                    cv2.BORDER_CONSTANT, value=(255, 255, 255))
+        return np.hstack((image, undist))

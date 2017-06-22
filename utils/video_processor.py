@@ -52,7 +52,8 @@ class VideoProcessor:
         #image_perspective = cv2.cvtColor(image_perspective, cv2.COLOR_BGR2GRAY)
         finder = LaneFinder(image_perspective, cache=True)
         finder.slide_window(n_windows=9)
-        image_perspective_overlay = finder.visualize(draw_lane_pixels=False, draw_on_image=False)
+        image_perspective_overlay = finder.visualize(draw_lane_pixels=False, draw_on_image=False,
+                                                     draw_windows=False)
         pers_img = PerspectiveTransform(image_perspective_overlay)
         image_overlay = pers_img.get_inverse()
         undist_overlay = cv2.addWeighted(image_undist, 1, image_overlay, 0.3, 0)
