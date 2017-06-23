@@ -22,6 +22,7 @@ class VideoProcessor:
         VideoProcessor.debug_dir = debug_dir
         VideoProcessor.debug_frame_number = 0
         if debug_dir is not None:
+            os.makedirs(os.path.join(debug_dir, 'original'), exist_ok=True)
             os.makedirs(os.path.join(debug_dir, 'undist'), exist_ok=True)
             os.makedirs(os.path.join(debug_dir, 'binary'), exist_ok=True)
             os.makedirs(os.path.join(debug_dir, 'perspective'), exist_ok=True)
@@ -29,9 +30,10 @@ class VideoProcessor:
             os.makedirs(os.path.join(debug_dir, 'final'), exist_ok=True)
 
     @staticmethod
-    def write_debug_images(undist, binary, perspective, lanes, final):
+    def write_debug_images(image, undist, binary, perspective, lanes, final):
         ''' Writes intermediate images to debug_dir '''
         filename = str(VideoProcessor.debug_frame_number) + '.png'
+        cv2.imwrite(os.path.join(VideoProcessor.debug_dir, 'original', filename), image)
         cv2.imwrite(os.path.join(VideoProcessor.debug_dir, 'undist', filename), undist)
         cv2.imwrite(os.path.join(VideoProcessor.debug_dir, 'binary', filename), binary)
         cv2.imwrite(os.path.join(VideoProcessor.debug_dir, 'perspective', filename), perspective)
@@ -61,7 +63,7 @@ class VideoProcessor:
         if VideoProcessor.debug_dir is not None:
             if VideoProcessor.debug_frame_number % VideoProcessor.debug_frame_bypass == 0:
                 image_lanes = finder.visualize()
-                VideoProcessor.write_debug_images(image_undist, image_binary, image_perspective,
+                VideoProcessor.write_debug_images(image, image_undist, image_binary, image_perspective,
                                                   image_lanes, undist_overlay)
             VideoProcessor.debug_frame_number += 1
         return cv2.cvtColor(undist_overlay, cv2.COLOR_BGR2RGB)

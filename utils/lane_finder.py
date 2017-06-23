@@ -106,8 +106,8 @@ class LaneFinder:
         self.right_curverad = None
         self.ym_per_pix = 30/720 # meters per pixel in y dimension
         self.xm_per_pix = 3.7/700 # meters per pixel in x dimension
-        self.distance_from_center = self.left_lane_start - \
-                                    (self.image.shape[1] - self.right_lane_start)
+        self.distance_from_center = ((self.left_lane_start + self.right_lane_start) / 2 -
+                                     self.image.shape[1] / 2)
         self.left_windows = []
         self.right_windows = []
 
